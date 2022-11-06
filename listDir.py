@@ -149,28 +149,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def create_page(self):
-        values = {
-            'date_time'   : self.date_time_string(),
-            'client_host' : self.client_address[0],
-            'client_port' : self.client_address[1],
-            'command'     : self.command,
-            'path'        : self.path
-        }
-        page = self.Page.format(**values)
-        return page
-
-    # Handle a GET request.
-    def send_page(self, page):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.send_header("Content-Length", str(len(page)))
-        self.end_headers()
-        self.wfile.write(self.page)
-
-
-
-
 #----------------------------------------------------------------------
 
 if __name__ == '__main__':
