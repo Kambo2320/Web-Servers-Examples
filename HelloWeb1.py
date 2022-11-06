@@ -1,3 +1,4 @@
+# 500 Line or less (Hello, Web)
 import BaseHTTPServer
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
