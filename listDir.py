@@ -1,7 +1,6 @@
 # 500 Line or less (Listing Directories)
 import BaseHTTPServer
 import os
-import exceptions
 
 class case_no_file(object):
     '''File or directory does not exist.'''
