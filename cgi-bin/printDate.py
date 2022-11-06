@@ -1,3 +1,4 @@
+#simple example cgi program
 from datetime import datetime
 print('''\
 <html>
