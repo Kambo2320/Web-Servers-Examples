@@ -8,7 +8,14 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     Page = '''\
 <html>
 <body>
-<p>Hello, web!</p>
+<table>
+<tr>  <td>Header</td>         <td>Value</td>          </tr>
+<tr>  <td>Date and time</td>  <td>{date_time}</td>    </tr>
+<tr>  <td>Client host</td>    <td>{client_host}</td>  </tr>
+<tr>  <td>Client port</td>    <td>{client_port}s</td> </tr>
+<tr>  <td>Command</td>        <td>{command}</td>      </tr>
+<tr>  <td>Path</td>           <td>{path}</td>         </tr>
+</table>
 </body>
 </html>
 '''
@@ -35,7 +42,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html")
         self.send_header("Content-Length", str(len(page)))
         self.end_headers()
-        self.wfile.write(self.page)
+        self.wfile.write(page)
 
     
 
