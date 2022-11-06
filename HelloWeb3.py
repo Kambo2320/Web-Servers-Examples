@@ -12,7 +12,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             # It doesn't exist...
             if not os.path.exists(full_path):
-                raise ServerException("'{0}' not found".format(self.path))
+                raise Exception("'{0}' not found".format(self.path))
 
             # ...it's a file...
             elif os.path.isfile(full_path):
@@ -20,7 +20,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             # ...it's something we don't handle.
             else:
-                raise ServerException("Unknown object '{0}'".format(self.path))
+                raise Exception("Unknown object '{0}'".format(self.path))
 
         # Handle errors.
         except Exception as msg:
