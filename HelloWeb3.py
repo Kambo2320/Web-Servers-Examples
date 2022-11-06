@@ -4,17 +4,6 @@ import os
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     '''Handle HTTP requests by returning a fixed 'page'.'''
-
-    # Page to send back.
-    Page = '''\
-<html>
-<body>
-<p>Hello, web!</p>
-</body>
-</html>
-'''
-        # ...page template...
-
     def do_GET(self):
         try:
 
