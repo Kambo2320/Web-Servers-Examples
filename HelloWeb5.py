@@ -1,63 +1,7 @@
 # 500 Line or less (The CGI Protocol)
 import BaseHTTPServer
 import os
-        
-    #class cases that reproduce the behavior of the previous server
-class case_cgi_file(object):
-    '''Something runnable.'''
 
-    def test(self, handler):
-        return os.path.isfile(handler.full_path) and \
-               handler.full_path.endswith('.py')
-
-    def act(self, handler):
-        handler.run_cgi(handler.full_path)
-    
-    def run_cgi(self, full_path):
-        cmd = "python " + full_path
-        child_stdin, child_stdout = os.popen2(cmd)
-        child_stdin.close()
-        data = child_stdout.read()
-        child_stdout.close()
-        self.send_content(data)
-           
-class case_no_file(object):
-    '''File or directory does not exist.'''
-
-    def test(self, handler):
-        return not os.path.exists(handler.full_path)
-
-    def act(self, handler):
-        raise ServerException("'{0}' not found".format(handler.path))
-
-    #handler cases for request handler
-class case_directory_index_file(object):
-    '''Serve index.html page for a directory.'''
-
-    def index_path(self, handler):
-        return os.path.join(handler.full_path, 'index.html')
-
-    def test(self, handler):
-        return os.path.isdir(handler.full_path) and \
-               os.path.isfile(self.index_path(handler))
-
-    def act(self, handler):
-        handler.handle_file(self.index_path(handler))
-        
-    #class cases for no index file  
-class case_directory_no_index_file(object):
-    '''Serve listing for a directory without an index.html page.'''
-
-    def index_path(self, handler):
-        return os.path.join(handler.full_path, 'index.html')
-
-    def test(self, handler):
-        return os.path.isdir(handler.full_path) and \
-               not os.path.isfile(self.index_path(handler))
-
-    def act(self, handler):
-        handler.list_dir(handler.full_path)
-        
 #Class base case
 class base_case(object):
     '''Parent for case handlers.'''
@@ -74,20 +18,88 @@ class base_case(object):
     def index_path(self, handler):
         return os.path.join(handler.full_path, 'index.html')
 
+#class cases that reproduce the behavior of the previous server
+class case_cgi_file(base_case):
+    '''Something runnable.'''
+
     def test(self, handler):
-        assert False, 'Not implemented.'
+        return os.path.isfile(handler.full_path) and \
+               handler.full_path.endswith('.py')
 
     def act(self, handler):
-        assert False, 'Not implemented.'
-        
-class case_existing_file(object):
+        self.run_cgi(handler, handler.full_path)
+
+    def run_cgi(self, handler, full_path):
+        # the cmd might need to be changed
+        cmd = "python " + full_path
+        child_stdin, child_stdout = os.popen2(cmd)
+        child_stdin.close()
+        data = child_stdout.read()
+        child_stdout.close()
+        handler.send_content(data)
+
+#handler for no directory or file
+class case_no_file(base_case):
+    '''File or directory does not exist.'''
+
+    def test(self, handler):
+        return not os.path.exists(handler.full_path)
+
+    def act(self, handler):
+        raise Exception("'{0}' not found".format(handler.path))
+
+#handler cases for request handler
+class case_directory_index_file(base_case):
+    '''Serve index.html page for a directory.'''
+
+    def test(self, handler):
+        return os.path.isdir(handler.full_path) and \
+               os.path.isfile(self.index_path(handler))
+
+    def act(self, handler):
+        self.handle_file(handler, self.index_path(handler))
+
+#class cases for no index file
+class case_directory_no_index_file(base_case):
+    '''Serve listing for a directory without an index.html page.'''
+
+    def test(self, handler):
+        return os.path.isdir(handler.full_path) and \
+               not os.path.isfile(self.index_path(handler))
+
+    def act(self, handler):
+        self.list_dir(handler, handler.full_path)
+
+    # How to display a directory listing.
+    Listing_Page = '''\
+        <html>
+        <body>
+        <ul>
+        {0}
+        </ul>
+        </body>
+        </html>
+        '''
+
+    def list_dir(self, handler, full_path):
+        try:
+            entries = os.listdir(full_path)
+            bullets = ['<li>{0}</li>'.format(e)
+                for e in entries if not e.startswith('.')]
+            page = self.Listing_Page.format('\n'.join(bullets))
+            handler.send_content(page)
+        except OSError as msg:
+            msg = "'{0}' cannot be listed: {1}".format(self.path, msg)
+            handler.handle_error(msg)
+
+class case_existing_file(base_case):
     '''File exists.'''
 
     def test(self, handler):
         return os.path.isfile(handler.full_path)
 
     def act(self, handler):
-        handler.handle_file(handler.full_path)
+        self.handle_file(handler, handler.full_path)
 
 class case_always_fail(object):
     '''Base case if nothing else worked.'''
@@ -96,17 +108,9 @@ class case_always_fail(object):
         return True
 
     def act(self, handler):
-        raise ServerException("Unknown object '{0}'".format(handler.path))
-            
-    def handle_file(self, full_path):
-        try:
-            with open(full_path, 'rb') as reader:
-                content = reader.read()
-            self.send_content(content)
+        raise Exception("Unknown object '{0}'".format(handler.path))
 
-        except IOError as msg:
-            msg = "'{0}' cannot be read: {1}".format(self.path, msg)
-            self.handle_error(msg)
+#----------------------------------------------------------------------
 
 class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     '''Handle HTTP requests by returning a fixed 'page'.'''
@@ -122,26 +126,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
              case_directory_no_index_file,
              case_always_fail]
 
-    # Page to send back.
-    Page = '''\
-        <html>
-        <body>
-        <p>Hello, web!</p>
-        </body>
-        </html>
-        '''
-        # ...page template...
-        
-    # How to display a directory listing.
-    Listing_Page = '''\
-        <html>
-        <body>
-        <ul>
-        {0}
-        </ul>
-        </body>
-        </html>
-        '''
     # How to display an error.
     Error_Page = """\
         <html>
@@ -152,29 +136,8 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         </html>
         """
 
-    def list_dir(self, full_path):
-        try:
-            entries = os.listdir(full_path)
-            bullets = ['<li>{0}</li>'.format(e) 
-                for e in entries if not e.startswith('.')]
-            page = self.Listing_Page.format('\n'.join(bullets))
-            self.send_content(page)
-        except OSError as msg:
-            msg = "'{0}' cannot be listed: {1}".format(self.path, msg)
-            self.handle_error(msg)
-            
-    def handle_file(self, full_path):
-        try:
-            with open(full_path, 'rb') as reader:
-                content = reader.read()
-            self.send_content(content)
-        except IOError as msg:
-            msg = "'{0}' cannot be read: {1}".format(self.path, msg)
-            self.handle_error(msg)
-            
     def do_GET(self):
         try:
-
             # Figure out what exactly is being requested.
             self.full_path = os.getcwd() + self.path
 
@@ -188,7 +151,7 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # Handle errors.
         except Exception as msg:
             self.handle_error(msg)
-            
+
     # Handle unknown objects.
     def handle_error(self, msg):
         content = self.Error_Page.format(path=self.path, msg=msg)
@@ -201,40 +164,6 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.wfile.write(content)
-
-    #Handle unknown objects
-    def handle_error(self, msg):
-        content = self.Error_Page.format(path=self.path, msg=msg)
-        self.send_content(content,404)
-        
-    # Send actual content.
-    def send_content(self, content, status=200):
-        self.send_response(status)
-        self.send_header("Content-type", "text/html")
-        self.send_header("Content-Length", str(len(content)))
-        self.end_headers()
-        self.wfile.write(content)
-        
-    def create_page(self):
-        values = {
-            'date_time'   : self.date_time_string(),
-            'client_host' : self.client_address[0],
-            'client_port' : self.client_address[1],
-            'command'     : self.command,
-            'path'        : self.path
-        }
-        page = self.Page.format(**values)
-        return page
-        
-    # Handle a GET request.
-    def send_page(self, page):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html")
-        self.send_header("Content-Length", str(len(page)))
-        self.end_headers()
-        self.wfile.write(self.page)
-
-    
 
 
 #----------------------------------------------------------------------
